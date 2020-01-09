@@ -252,16 +252,11 @@ def main(file, conf, show_ast):
     # %%%%%% END OUTPUT %%%%%% #
 
 
-def handle_error(header, content, code):
-    click.echo(f"{header} error: {content}", err=True)
-    exit(code)
-
-
 if __name__ == '__main__':
     try:
         main()
         exit(0)
-    except ConfigError as e:
-        handle_error("Configuration", e.message, 1)
+    except (BaseError) as e:
+        e.handle()
     except plyparser.ParseError as e:
-        handle_error("Parser", e, 10)
+        ParseError(e).handle()
