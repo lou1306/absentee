@@ -178,6 +178,15 @@ class ToLogical(Transformation):
         NodeVisitor.generic_visit(self, node)
 
 
+class NoArrays(Transformation):
+
+    def visit_FileAST(self, node):
+        self._info = GetArrayInfo()
+        self._info.visit(node)
+        # print(self._info.result)
+        NodeVisitor.generic_visit(self, node)
+
+
 class GetArrayInfo(Transformation):
 
     def __init__(self, params={}):
@@ -220,6 +229,7 @@ class GetArrayInfo(Transformation):
 def build(toml_input):
 
     BIND = {
+        "noArrays": NoArrays,
         "renameCalls": RenameCalls,
         "toLogical": ToLogical,
         "retype": Retype,
