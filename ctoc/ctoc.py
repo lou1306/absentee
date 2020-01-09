@@ -177,6 +177,45 @@ class ToLogical(Transformation):
         NodeVisitor.generic_visit(self, node)
 
 
+class GetArrayInfo(Transformation):
+
+    def __init__(self, params={}):
+        super().__init__(params)
+        self._visiting = False
+        self._scope = None
+        self._dim = []
+        self.result = {None: ({}, None)}
+
+    def visit_FileAST(self, node):
+        NodeVisitor.generic_visit(self, node)
+        print({k: str(v) for k, v in self.result.items()})
+
+    def visit_Compound(self, node):
+        # Copy parent scope
+        self.result[node.coord] = ({}, self._scope)
+        self._old_scope, self._scope = self._scope, node.coord
+        NodeVisitor.generic_visit(self, node)
+        self._scope = self._old_scope
+
+    def visit_ArrayDecl(self, node):
+        self._visiting = True
+        try:
+            self._dim.append(int(node.dim.value))
+        except AttributeError:
+            # Non-constant array size, fail
+            raise TransformError(
+                "Cannot use NoArrays on input file",
+                str(node.dim.coord))
+        NodeVisitor.generic_visit(self, node)
+
+    def visit_TypeDecl(self, node):
+        if self._visiting:
+            self.result[self._scope][0][node.declname] = \
+                (self._dim, self._scope)
+            self._dim = []
+            self._visiting = False
+
+
 def build(toml_input):
 
     BIND = {
