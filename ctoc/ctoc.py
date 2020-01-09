@@ -53,7 +53,7 @@ class Transformation(NodeVisitor):
 class Initialize(Transformation):
     """Add explicit initializers to declarations that lack one.
 
-    Example: int a; --> int a = call()
+    Example: int a; --> int a = call();
     """
 
     def __init__(self, params):
@@ -67,6 +67,7 @@ class Initialize(Transformation):
         self._scope = old_scope
 
     def visit_ParamList(self, node):
+        # Do not visit parameters
         pass
 
     def visit_IdentifierType(self, node):
