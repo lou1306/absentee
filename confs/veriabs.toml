@@ -19,5 +19,6 @@ rawPrelude = '''
 do = [
     "toLogical",
     "initialize",
-    "renameCalls"
+    "renameCalls",
+    "noArrays"
 ]

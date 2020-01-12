@@ -1,5 +1,11 @@
-transforms = ["toLogical", "purgeTypedefs", "addLabels"]
+[renameCalls]
+"__VERIFIER_nondet"     = "__VERIFIER_nondet_int"
+"nondet"                = "__VERIFIER_nondet_int"
 
+[retype]
+"TYPEOFVALUES"   = "char"
+
+[main]
 # Additional includes (will appear at head)
 #includes = []
 
@@ -9,9 +15,9 @@ int __VERIFIER_nondet_int() { int x; return x; }
 int __VERIFIER_assume(int COND) { if (!COND) goto EXIT_main; }
 '''
 
-[renameCalls]
-"__VERIFIER_nondet"     = "__VERIFIER_nondet_int"
-"nondet"                = "__VERIFIER_nondet_int"
-
-[retype]
-"TYPEOFVALUES"   = "char"
+do = [
+  "toLogical",
+  "purgeTypedefs",
+  "retype",
+  "renameCalls"
+]
