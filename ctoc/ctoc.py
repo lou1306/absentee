@@ -7,45 +7,8 @@ from pycparser import c_parser, c_generator, plyparser
 import click
 
 
-def build(toml_input):
-
-    BIND = {
-        "noArrays": NoArrays,
-        "renameCalls": RenameCalls,
-        "toLogical": ToLogical,
-        "retype": Retype,
-        "purgeTypedefs": PurgeTypedefs,
-        "addLabels": AddLabels,
-        "initialize": Initialize
-    }
-
-    conf = toml.loads(toml_input)
-
-    if "main" not in conf:
-        raise ConfigError("Missing \"main\" in configuration")
-
-    main = conf["main"]
-
-    undefined_transforms = [k for k in main.get("do", []) if k not in BIND]
-    if undefined_transforms:
-        print("Warning: The following transformations are not defined:",
-              ", ".join(undefined_transforms), file=stderr)
-
-    transforms = [
-        BIND[k](conf.get(k, {}))
-        for k in main.get("do", [])
-        if k in BIND
-    ]
-
-    includes = [
-        f"#include {i}"
-        if i.startswith("<")
-        else f"#include \"{i}\""
-        for i in main.get("includes", [])
-    ]
-
-    return transforms, includes, main.get("rawPrelude", "")
 from error import BaseError, ParseError, ConfigError
+from recipe import build_toml
 
 
 @click.command()
