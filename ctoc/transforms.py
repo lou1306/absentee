@@ -192,7 +192,9 @@ class NoArrays(Transformation):
             for i in range(size)
         ]
         body = Compound([Switch(ID("i"), Compound(cases))])
-        setter = make_function(info.type, f"get{name}", (("int", "i"),), body)
+        setter = make_function(
+            IdentifierType(["void"]), f"set{name}",
+            (("int", "i"), (info.type.names[0], "value")), body)
 
         return (getter, setter)
 
