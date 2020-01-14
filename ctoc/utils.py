@@ -22,12 +22,9 @@ def track_parent(cls):
     def insert_before(self, node, nodes):
         for attr, n in self.parent.children():
             if n == node:
-                if "[" in attr:
-                    attr, i, array = self._handle_array_attr(attr, self.parent)
-                    array = [*array[:i], *nodes, *array[i:]]
-                    setattr(self.parent, attr, array)
-            else:
-                continue
+                attr, i, array = self._handle_array_attr(attr, self.parent)
+                array = [*array[:i], *nodes, *array[i:]]
+                setattr(self.parent, attr, array)
 
     def delete(self, node):
         self.replace(node, None)
