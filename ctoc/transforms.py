@@ -308,3 +308,15 @@ class GetId(NodeVisitor):
 
     def visit_ID(self, node):
         self.result = node
+
+
+class NoneRemoval(Transformation):
+    """Removes None elements from lists within the AST
+    """
+
+    def generic_visit(self, node):
+        for attr in self.get_list_attrs(node):
+            ls = getattr(node, attr, [])
+            ls = [x for x in ls if x is not None]
+            setattr(node, attr, ls)
+        super().generic_visit(node)
