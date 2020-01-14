@@ -39,6 +39,15 @@ class Transformation(NodeVisitor):
         self.ast = ast
         self.params = params
 
+    def get_list_attrs(self, node):
+        return (a[:a.find("[")] for a, _ in node.children() if "[" in a)
+
+    def get_attrs(self, node):
+        return set(
+            attr[:attr.find("[")]
+            if "[" in attr else attr
+            for attr, _ in node.children())
+
 
 class Initialize(Transformation):
     """Add explicit initializers to declarations that lack one.
