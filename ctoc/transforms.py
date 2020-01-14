@@ -92,7 +92,6 @@ class PurgeTypedefs(Transformation):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.priority = 1
         self._visitingTypedef = ""
         self._visitingDecl = False
         self._markedForRemoval = set()
@@ -230,11 +229,10 @@ class NoArrays(Transformation):
             self.generic_visit(node)
 
     def visit_FileAST(self, node):
-        # info_visitor = 
-        # info_visitor.visit(node)
         self._info = SymbolTableBuilder().make_table(node)
         self.generic_visit(node)
         self.ast.ext = [*self.new_code, *self.ast.ext]
+        NoneRemoval(node).visit(node)
 
     def visit_Assignment(self, node):
         if type(node.lvalue) == ArrayRef:
@@ -282,7 +280,7 @@ class NoArrays(Transformation):
 
 
 class GetId(NodeVisitor):
-    """Return the ID node for the node (typically for arrays)
+    """Return the ID node for the given node
     """
 
     def generic_visit(self, node):
