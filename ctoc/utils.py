@@ -49,16 +49,34 @@ def track_parent(cls):
 
 def track_scope(cls):
     # result = ScopeInfo()
-    old_visit = getattr(cls, "visit_Compound", None)
+    old_visit_Compound = getattr(cls, "visit_Compound", None)
+    old_visit_ParamList = getattr(cls, "visit_ParamList", None)
+    pop_scope = getattr(cls, "pop_scope", None)
     setattr(cls, "scope", None)
 
-    def visit_Compound(self, node):
-        old_scope = self.scope
-        self.scope = node.coord
-        if old_visit is not None:
-            old_visit(self, node)
+    def _push_scope(self, node):
+        old_scope, self.scope = self.scope, (node.coord if node else None)
+        return old_scope
+
+    def _visit_and_pop_scope(self, node, goto_scope):
         self.generic_visit(node)
-        self.scope = old_scope
+        self.scope = goto_scope
+        if pop_scope is not None:
+            pop_scope(self)
+
+    def visit_Compound(self, node):
+        old_scope, self.scope = self.scope, (node.coord if node else None)
+        # old_scope = _push_scope(self, self.scope)
+        if old_visit_Compound is not None:
+            old_visit_Compound(self, node)
+        _visit_and_pop_scope(self, node, old_scope)
+
+    def visit_ParamList(self, node):
+        old_scope, self.scope = self.scope, (node.coord if node else None)
+        # old_scope = _push_scope(self, self.scope)
+        if old_visit_ParamList is not None:
+            old_visit_ParamList(self, node)
+        _visit_and_pop_scope(self, node, old_scope)
 
     setattr(cls, "visit_Compound", visit_Compound)
     return cls
