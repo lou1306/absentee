@@ -3,6 +3,7 @@
 from dataclasses import dataclass
 from typing import List
 from functools import reduce
+from collections import defaultdict
 
 from pycparser.c_ast import NodeVisitor, Node
 
@@ -31,17 +32,22 @@ class TableEntry:
 
 class SymbolTable:
     def __init__(self):
-        self._data = {None: {}}
+        self._data = defaultdict(dict)
         self._parents = {None: None}
         self._scope = None
 
     def pop_scope(self):
         self._scope = self._parents[self._scope]
 
-    def push_scope(self, new_scope, info=None):
-        self._data[new_scope] = info or {}
+    def push_scope(self, new_scope):
         self._parents[new_scope] = self._scope
         self._scope = new_scope
+
+    def get_or_default(self, key, scope, default):
+        try:
+            return self.get_info(key, scope)
+        except KeyError:
+            return default
 
     def get_info(self, key, scope):
         while scope:
