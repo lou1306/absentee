@@ -88,6 +88,12 @@ class SymbolTableBuilder(NodeVisitor):
     def visit_Compound(self, node):
         self.symbol_table.push_scope(self.scope)
 
+    def visit_ParamList(self, node):
+        self.symbol_table.push_scope(self.scope)
+
+    def pop_scope(self):
+        self.symbol_table.pop_scope()
+
     def visit_ArrayDecl(self, node):
         self._dim.append(node.dim)
         self.generic_visit(node)
