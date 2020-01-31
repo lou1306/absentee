@@ -114,7 +114,6 @@ class SymbolTableBuilder(NodeVisitor):
         self.generic_visit(node)
 
     def visit_TypeDecl(self, node):
-        # if self._dim:
         self.symbol_table[node.declname] = TableEntry(
             decl=node,
             scope=self.scope,
