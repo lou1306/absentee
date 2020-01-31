@@ -13,7 +13,7 @@ So far, it can:
 
 ## Basic usage
 
-`Absentee` takes as input a C program and a configuration file in the
+`absentee` takes as input a C program and a configuration file in the
 [`toml` format](https://github.com/toml-lang/toml), which specifies
 the transformations to be performed.
 
