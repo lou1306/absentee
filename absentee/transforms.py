@@ -9,7 +9,7 @@ from io import StringIO
 from pycparser.c_ast import NodeVisitor, IdentifierType, Compound, \
     EmptyStatement, Label, TypeDecl, FuncCall, ExprList, ID, Constant, \
     ArrayRef, ArrayDecl, Decl, Switch, Case, Return, FuncDecl, FuncDef, \
-    ParamList, Assignment, Break, BinaryOp, Struct
+    ParamList, Assignment, Break, BinaryOp, Struct, Typedef
 
 
 from symboltable import SymbolTableBuilder
@@ -360,16 +360,15 @@ class Reorder(Transformation):
             marked = set()
 
             def visit(n):
-                if n in marked:
+                if n in marked or n in tmp_marked:
                     return
-                elif n in tmp_marked:
-                    raise TransformError("Cannot reorder.", None)
                 unmarked.pop(n, None)
                 tmp_marked.add(n)
 
-                neighbors = (x for x in lst
                 # Neighbor = anybody who needs something declared by n
-                             if self.needs[x].intersection(self.declares[n]))
+                neighbors = (x for x in tmp_marked.union(unmarked.keys())
+                             if x != n and
+                             self.needs[x].intersection(self.declares[n]))
 
                 for m in neighbors:
                     visit(m)
@@ -380,13 +379,17 @@ class Reorder(Transformation):
             while unmarked:
                 visit(unmarked.popitem()[0])
 
-            return reversed(result)
+            return result[::-1]
 
         for n in node.ext:
             self.current_node = n
             self.visit(n)
 
-        node.ext = list(tpsort(node.ext))
+        typedefs = (n for n in node.ext if type(n) == Typedef)
+        decls = (n for n in node.ext if type(n) == Decl)
+        funcdefs = (n for n in node.ext if type(n) == FuncDef)
+
+        node.ext = [*tpsort(typedefs), *tpsort(decls), *tpsort(funcdefs)]
 
     def visit_TypeDef(self, node):
         self.declares[self.current_node].add(node.name)
