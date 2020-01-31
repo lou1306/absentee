@@ -76,6 +76,7 @@ class SymbolTable:
 class SymbolTableBuilder(NodeVisitor):
 
     def __init__(self):
+        self._visit_paramlist = False
         self._reset()
 
     def make_table(self, node):
@@ -88,9 +89,13 @@ class SymbolTableBuilder(NodeVisitor):
 
     def visit_Compound(self, node):
         self.symbol_table.push_scope(self.scope)
+        self.generic_visit(node)
 
     def visit_ParamList(self, node):
+        self._visit_paramlist = True
         self.symbol_table.push_scope(self.scope)
+        self.generic_visit(node)
+        self._visit_paramlist = False
 
     def pop_scope(self):
         self.symbol_table.pop_scope()
@@ -106,5 +111,6 @@ class SymbolTableBuilder(NodeVisitor):
             scope=self.scope,
             size=self._dim,
             type=node.type,
+            is_param=self._visit_paramlist
         )
         self._reset()
