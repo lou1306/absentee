@@ -3,6 +3,7 @@
 # from functools import reduce
 # from operator import mul
 from copy import deepcopy
+from io import StringIO
 
 from pycparser.c_ast import NodeVisitor, IdentifierType, Compound, \
     EmptyStatement, Label, TypeDecl, FuncCall, ExprList, ID, Constant, \
@@ -13,6 +14,21 @@ from pycparser.c_ast import NodeVisitor, IdentifierType, Compound, \
 from symboltable import SymbolTableBuilder
 from utils import track_scope, track_parent
 from error import TransformError
+
+
+def to_string(node):
+    """Hacky hack to get a string representation for an AST node
+    """
+
+    __s = StringIO()
+
+    def f(node):
+        __s.truncate(0)
+        __s.seek(0)
+        node.show(buf=__s)
+        __s.seek(0)
+        return __s.read()
+    return f(node)
 
 
 def make_decl(name, type_):
