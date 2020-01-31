@@ -3,12 +3,13 @@
 # from functools import reduce
 # from operator import mul
 from copy import deepcopy
+from collections import defaultdict
 from io import StringIO
 
 from pycparser.c_ast import NodeVisitor, IdentifierType, Compound, \
     EmptyStatement, Label, TypeDecl, FuncCall, ExprList, ID, Constant, \
     ArrayRef, ArrayDecl, Decl, Switch, Case, Return, FuncDecl, FuncDef, \
-    ParamList, Assignment, Break, BinaryOp
+    ParamList, Assignment, Break, BinaryOp, Struct
 
 
 from symboltable import SymbolTableBuilder
@@ -195,7 +196,6 @@ class NoArrays(Transformation):
 
     def __init__(self, *args):
         super().__init__(*args)
-        self._reset()
         self.new_code = []
         self.id_finder = GetId()
 
@@ -203,23 +203,37 @@ class NoArrays(Transformation):
         """Build get() and set() function based on info.
         """
         name = self.array_name(info)
+        fname = self.make_getter_name(info)
         size = info.sizeof()
+        params = [("int", f"x{i}") for i in range(len(info.size))]
+        mults = [
+            BinaryOp("*", a, ID(b[1]))
+            for a, b in zip(info.size, params[:-1])]
+
+        offset = ID(params[-1][1])
+        for m in mults:
+            offset = BinaryOp("+", m, offset)
 
         cases = [
             Case(Constant("int", str(i)), [Return(ID(f"{name}_{i}"))])
             for i in range(size)
         ]
-        body = Compound([Switch(ID("i"), Compound(cases))])
-        getter = make_function(info.type, f"get{name}", (("int", "i"),), body)
+        body = Compound([Switch(offset, Compound(cases))])
+        getter = make_function(info.type, fname, params, body)
+
         cases = [
             Case(Constant("int", str(i)),
                  [Assignment("=", ID(f"{name}_{i}"), ID("value")), Break()])
             for i in range(size)
         ]
-        body = Compound([Switch(ID("i"), Compound(cases))])
+        body = Compound([Switch(offset, Compound(cases))])
+        type_ = (
+            info.type.name
+            if type(info.type) == Struct
+            else info.type.names[0])
         setter = make_function(
-            IdentifierType(["void"]), f"set{name}",
-            (("int", "i"), (info.type.names[0], "value")), body)
+            IdentifierType(["void"]), fname.replace("get", "set", 1),
+            params + [(type_, "value")], body)
 
         return (getter, setter)
 
@@ -230,80 +244,70 @@ class NoArrays(Transformation):
             scope_slug = scope[scope.find(":"):].replace(":", "_")
         return f"{info.decl.declname}{scope_slug}"
 
-    def _reset(self):
-        self._op = "get"
-        self._new_node = None
-        self._dim = []
-
     def visit_Decl(self, node):
         if type(node.type) == ArrayDecl:
             info = self._info.get_info(node.name, self.scope)
-            new_name = self.array_name(info)
-            if node.init:
-                raise TransformError(
-                    "Array initializers not supported.",
-                    node.init.coord)
+            if not info.is_param:
+                new_name = self.array_name(info)
+                if node.init:
+                    raise TransformError(
+                        "Array initializers not supported.",
+                        node.init.coord)
 
-            def do_decl(i):
-                new_info = deepcopy(info)
-                new_info.decl.declname = f"{new_name}_{i}"
-                return make_decl(new_info.decl.declname, new_info.decl)
+                def do_decl(i):
+                    new_info = deepcopy(info)
+                    new_info.decl.declname = f"{new_name}_{i}"
+                    return make_decl(new_info.decl.declname, new_info.decl)
 
-            self.delete(node)
-            decls = [do_decl(i) for i in range(info.sizeof())]
-            self.new_code += decls
-            self.new_code.extend(self.make_accessors(info))
-            self.generic_visit(node)
+                self.delete(node)
+                decls = (do_decl(i) for i in range(info.sizeof()))
+                self.new_code += decls
+                self.new_code.extend(self.make_accessors(info))
+        self.generic_visit(node)
 
     def visit_FileAST(self, node):
         self._info = SymbolTableBuilder().make_table(node)
         self.generic_visit(node)
-        self.ast.ext = [*self.new_code, *self.ast.ext]
+        self.ast.ext.extend(self.new_code)
         NoneRemoval(node).visit(node)
+        Reorder(node).visit(node)
 
     def visit_Assignment(self, node):
-        if type(node.lvalue) == ArrayRef:
-            self._op = "set"
-            id_node = self.id_finder.find_id(node.lvalue)
-            self.visit(node.lvalue)
-            new_node = self.make_funccall(id_node)
-            self._reset()
-            self.visit(node.rvalue)
-            new_node.args.exprs.append(node.rvalue)
-            self.replace(node, new_node)
-        else:
-            self.generic_visit(node)
+        self.generic_visit(node)
+        if node.lvalue.coord == "NoArrays":
+            node.lvalue.args.exprs.append(node.rvalue)
+            node.lvalue.name.name = \
+                node.lvalue.name.name.replace("get", "set", 1)
+            self.replace(node, node.lvalue)
 
     def visit_ArrayRef(self, node):
-        if not self._dim:
-            self._dim = [node.subscript]
-            id_node = self.id_finder.find_id(node)
-            self.generic_visit(node)
-            if self._op == "get":
-                new_node = self.make_funccall(id_node)
-                self._reset()
-                self.replace(node, new_node)
+        self.generic_visit(node)
+        if type(node.name) == ID:
+            _node = self.make_funccall(node.name)
+            _node.coord = "NoArrays"
+            _node.args.exprs.append(node.subscript)
+            self.replace(node, _node)
+        elif node.name.coord == "NoArrays":
+            node.name.args.exprs.append(node.subscript)
+            self.replace(node, node.name)
         else:
-            self._dim.append(node.subscript)
-            self.generic_visit(node)
+            print("???", node)
+
+    def make_getter_name(self, info):
+        def is_defined(n):
+            return any(True for _ in self._info.lookup(n))
+        name = f"get{self.array_name(info)}"
+        # name_set = f"set{self.array_name(info)}"
+        while True:
+            if is_defined(name) or is_defined(name.replace("get", "set", 1)):
+                name = "_" + name
+            else:
+                break
+        return name  # if get_or_set == "get" else name_set
 
     def make_funccall(self, id_node):
-        dim = self._dim
         info = self._info.get_info(id_node.name, self.scope)
-        size = list(info.int_size())
-        if len(size) != len(dim):
-            raise TransformError("Cannot remove arrays.", id_node.coord)
-        mults = [
-            BinaryOp("*", Constant("", str(a)), b)
-            for a, b in zip(size, dim[1:])]
-
-        offset = dim[0]
-        for m in mults:
-            offset = BinaryOp("+", m, offset)
-
-        return FuncCall(
-            ID(f"{self._op}{self.array_name(info)}"),
-            ExprList([offset]))
+        return FuncCall(ID(self.make_getter_name(info)), ExprList([]))
 
 
 class GetId(NodeVisitor):
