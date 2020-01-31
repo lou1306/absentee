@@ -320,3 +320,87 @@ class NoneRemoval(Transformation):
             ls = [x for x in ls if x is not None]
             setattr(node, attr, ls)
         super().generic_visit(node)
+
+
+@track_scope
+class Reorder(Transformation):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.id_finder = GetId()
+        self.current_node = None
+        # self.visiting_params = False
+        self.needs = defaultdict(set)
+        self.declares = defaultdict(set)
+        self.symbols = SymbolTableBuilder().make_table(self.ast)
+
+    def visit_FileAST(self, node):
+        def tpsort(lst):
+            result = []
+            # We use a dict because it guarantees ordering of the elements
+            # While allowing for constant-time remove (pop(), popitem())
+            unmarked = {x: None for x in lst}
+            tmp_marked = set()
+            marked = set()
+
+            def visit(n):
+                if n in marked:
+                    return
+                elif n in tmp_marked:
+                    raise TransformError("Cannot reorder.", None)
+                unmarked.pop(n, None)
+                tmp_marked.add(n)
+
+                neighbors = (x for x in lst
+                             if self.needs[x].intersection(self.declares[n]))
+
+                for m in neighbors:
+                    visit(m)
+                tmp_marked.discard(n)
+                marked.add(n)
+                result.append(n)
+
+            while unmarked:
+                visit(unmarked.popitem()[0])
+
+            return reversed(result)
+
+        for n in node.ext:
+            self.current_node = n
+            self.visit(n)
+
+        node.ext = list(tpsort(node.ext))
+
+    def visit_TypeDef(self, node):
+        self.declares[self.current_node].add(node.name)
+        self.generic_visit(node)
+
+    def visit_ParamList(self, node):
+        return
+        # self.visiting_params = True
+        # self.generic_visit(node)
+        # self.visiting_params = False
+
+    def visit_Decl(self, node):
+        if self.scope is None:
+            self.declares[self.current_node].add(node.name)
+        self.generic_visit(node)
+
+    def visit_IdentifierType(self, node):
+        self.needs[self.current_node].update(node.names)
+
+    def visit_ID(self, node):
+        info = self.symbols.get_or_default(node.name, self.scope, None)
+        if info and info.scope is None:
+            self.needs[self.current_node].add(info.decl.declname)
+
+    def visit_FuncCall(self, node):
+        try:
+            self.needs[self.current_node].add(node.name.name)
+        except Exception:
+            pass
+        self.generic_visit(node)
+
+    def visit_TypeDecl(self, node):
+        if node.declname:  # and not self.visiting_params:
+            self.declares[self.current_node].add(node.declname)
+        self.generic_visit(node)
