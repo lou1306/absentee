@@ -48,7 +48,6 @@ def track_parent(cls):
 
 
 def track_scope(cls):
-    # result = ScopeInfo()
     old_visit_Compound = getattr(cls, "visit_Compound", None)
     old_visit_ParamList = getattr(cls, "visit_ParamList", None)
     pop_scope = getattr(cls, "pop_scope", None)
@@ -66,14 +65,12 @@ def track_scope(cls):
 
     def visit_Compound(self, node):
         old_scope, self.scope = self.scope, (node.coord if node else None)
-        # old_scope = _push_scope(self, self.scope)
         if old_visit_Compound is not None:
             old_visit_Compound(self, node)
         _visit_and_pop_scope(self, node, old_scope)
 
     def visit_ParamList(self, node):
         old_scope, self.scope = self.scope, (node.coord if node else None)
-        # old_scope = _push_scope(self, self.scope)
         if old_visit_ParamList is not None:
             old_visit_ParamList(self, node)
         _visit_and_pop_scope(self, node, old_scope)
