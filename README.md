@@ -5,15 +5,15 @@ transformations for C.
 So far, it can:
 
 * Rename function calls
-* Change type decarations (e.g. change all `char`s to `int`s)
-* Remove `typedefs`
+* Change type decarations (e.g. change all `char` to `int`)
+* Remove `typedef`
 * Replace operators (e.g., & -> &&)
 * Add preprocessor directives
 * Turn an array-based program in an array-free equivalent
 
 ## Basic usage
 
-`Absentee` takes as input a C program and a configuration file in the
+`absentee` takes as input a C program and a configuration file in the
 [`toml` format](https://github.com/toml-lang/toml), which specifies
 the transformations to be performed.
 
