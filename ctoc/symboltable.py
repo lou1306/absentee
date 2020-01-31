@@ -40,9 +40,11 @@ class SymbolTable:
     def pop_scope(self):
         self._scope = self._parents[self._scope]
 
-    def push_scope(self, new_scope):
+    def push_scope(self, new_scope, info=None):
         self._parents[new_scope] = self._scope
         self._scope = new_scope
+        if info:
+            self.data[new_scope] = info
 
     def get_or_default(self, key, scope, default):
         try:
