@@ -1,0 +1,11 @@
+--- /Users/luca/git/sv-benchmarks/c/array-industry-pattern/array_of_struct_ptr_mul_init.c	2020-01-31 15:20:50.000000000 +0100
++++ array_of_struct_ptr_mul_init.c	2020-01-30 21:47:43.000000000 +0100
+@@ -2,7 +2,7 @@
+ void reach_error(){}
+ void __VERIFIER_assert(int cond) { if(!(cond)) { ERROR: {reach_error();abort();} } }
+ 
+-#define SIZE 100000
++#define SIZE 10
+ struct S {
+ 	unsigned short p;		  
+ 	unsigned short q;		 		  
