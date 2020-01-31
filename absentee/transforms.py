@@ -196,6 +196,8 @@ class NoArrays(Transformation):
 
     def __init__(self, *args):
         super().__init__(*args)
+        self.used = set()
+        self.accessors = set()
         self.new_code = []
         self.id_finder = GetId()
 
@@ -219,11 +221,12 @@ class NoArrays(Transformation):
             for i in range(size)
         ]
         body = Compound([Switch(offset, Compound(cases))])
-        getter = make_function(info.type, fname, params, body)
+        self.accessors.add(make_function(info.type, fname, params, body))
 
         cases = [
-            Case(Constant("int", str(i)),
-                 [Assignment("=", ID(f"{name}_{i}"), ID("value")), Break()])
+            Case(Constant("int", str(i)), [
+                Assignment("=", ID(f"{name}_{i}"), ID("value")),
+                Break()])
             for i in range(size)
         ]
         body = Compound([Switch(offset, Compound(cases))])
@@ -234,8 +237,7 @@ class NoArrays(Transformation):
         setter = make_function(
             IdentifierType(["void"]), fname.replace("get", "set", 1),
             params + [(type_, "value")], body)
-
-        return (getter, setter)
+        self.accessors.add(setter)
 
     def array_name(self, info):
         scope_slug = ""
@@ -262,13 +264,15 @@ class NoArrays(Transformation):
                 self.delete(node)
                 decls = (do_decl(i) for i in range(info.sizeof()))
                 self.new_code += decls
-                self.new_code.extend(self.make_accessors(info))
+                self.make_accessors(info)
         self.generic_visit(node)
 
     def visit_FileAST(self, node):
         self._info = SymbolTableBuilder().make_table(node)
         self.generic_visit(node)
         self.ast.ext.extend(self.new_code)
+        self.ast.ext.extend(
+            x for x in self.accessors if x.decl.name in self.used)
         NoneRemoval(node).visit(node)
         Reorder(node).visit(node)
 
@@ -279,15 +283,18 @@ class NoArrays(Transformation):
             node.lvalue.name.name = \
                 node.lvalue.name.name.replace("get", "set", 1)
             self.replace(node, node.lvalue)
+            self.used.add(node.lvalue.name.name)
 
     def visit_ArrayRef(self, node):
         self.generic_visit(node)
         if type(node.name) == ID:
-            info = self._info.get_info(node.name, self.scope)
-            _node = FuncCall(ID(self.make_getter_name(info)), ExprList([]))
+            info = self._info.get_info(node.name.name, self.scope)
+            fname = self.make_getter_name(info)
+            _node = FuncCall(ID(fname), ExprList([]))
             _node.coord = "NoArrays"
             _node.args.exprs.append(node.subscript)
             self.replace(node, _node)
+            self.used.add(fname)
         elif node.name.coord == "NoArrays":
             node.name.args.exprs.append(node.subscript)
             self.replace(node, node.name)
