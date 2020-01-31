@@ -25,7 +25,7 @@ class TableEntry:
                 yield int(s.value)
             except AttributeError:
                 raise TransformError("Cannot statically determine size.",
-                                     s.coord)
+                                     "" if s is None else s.coord)
 
     def sizeof(self):
         return reduce(lambda x, y: x * y, self.int_size())
