@@ -61,6 +61,10 @@ class SymbolTable:
         else:
             raise KeyError(key)
 
+    def lookup(self, key):
+        result = (v.get(key, None) for v in self._data.values())
+        return (entry for entry in result if entry)
+
     def __getitem__(self, key):
         return self.get_info(key, self._scope)
 
