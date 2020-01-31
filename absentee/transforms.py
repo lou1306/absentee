@@ -283,7 +283,8 @@ class NoArrays(Transformation):
     def visit_ArrayRef(self, node):
         self.generic_visit(node)
         if type(node.name) == ID:
-            _node = self.make_funccall(node.name)
+            info = self._info.get_info(node.name, self.scope)
+            _node = FuncCall(ID(self.make_getter_name(info)), ExprList([]))
             _node.coord = "NoArrays"
             _node.args.exprs.append(node.subscript)
             self.replace(node, _node)
@@ -302,10 +303,6 @@ class NoArrays(Transformation):
             else:
                 break
         return name  # if get_or_set == "get" else name_set
-
-    def make_funccall(self, id_node):
-        info = self._info.get_info(id_node.name, self.scope)
-        return FuncCall(ID(self.make_getter_name(info)), ExprList([]))
 
 
 class GetId(NodeVisitor):
