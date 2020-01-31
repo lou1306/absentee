@@ -290,8 +290,6 @@ class NoArrays(Transformation):
         elif node.name.coord == "NoArrays":
             node.name.args.exprs.append(node.subscript)
             self.replace(node, node.name)
-        else:
-            print("???", node)
 
     def make_getter_name(self, info):
         def is_defined(n):
@@ -331,7 +329,7 @@ class GetId(NodeVisitor):
 
 
 class NoneRemoval(Transformation):
-    """Removes None elements from lists within the AST
+    """Removes None elements from all lists within the AST
     """
 
     def generic_visit(self, node):
@@ -348,7 +346,6 @@ class Reorder(Transformation):
         super().__init__(*args, **kwargs)
         self.id_finder = GetId()
         self.current_node = None
-        # self.visiting_params = False
         self.needs = defaultdict(set)
         self.declares = defaultdict(set)
         self.symbols = SymbolTableBuilder().make_table(self.ast)
@@ -356,7 +353,7 @@ class Reorder(Transformation):
     def visit_FileAST(self, node):
         def tpsort(lst):
             result = []
-            # We use a dict because it guarantees ordering of the elements
+            # We use a dict because it preserves the ordering of elements
             # While allowing for constant-time remove (pop(), popitem())
             unmarked = {x: None for x in lst}
             tmp_marked = set()
@@ -371,6 +368,7 @@ class Reorder(Transformation):
                 tmp_marked.add(n)
 
                 neighbors = (x for x in lst
+                # Neighbor = anybody who needs something declared by n
                              if self.needs[x].intersection(self.declares[n]))
 
                 for m in neighbors:
@@ -396,9 +394,6 @@ class Reorder(Transformation):
 
     def visit_ParamList(self, node):
         return
-        # self.visiting_params = True
-        # self.generic_visit(node)
-        # self.visiting_params = False
 
     def visit_Decl(self, node):
         if self.scope is None:
