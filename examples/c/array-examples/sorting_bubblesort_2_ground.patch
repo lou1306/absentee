@@ -1,0 +1,11 @@
+--- sorting_sbblesort_2_ground.c	2020-01-31 11:04:55.000000000 +0100
++++ sorting_bubblesort_2_ground.c	2020-01-30 21:40:43.000000000 +0100
+@@ -3,7 +3,7 @@
+ void __VERIFIER_assert(int cond) { if(!(cond)) { ERROR: {reach_error();abort();} } }
+ extern int __VERIFIER_nondet_int();
+ 
+-#define N 100000
++#define N 10
+ 
+ int main( ) {
+   int a[ N ];
