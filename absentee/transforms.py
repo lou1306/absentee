@@ -293,16 +293,14 @@ class NoArrays(Transformation):
             self.replace(node, node.name)
 
     def make_getter_name(self, info):
-        def is_defined(n):
-            return any(True for _ in self._info.lookup(n))
         name = f"get{self.array_name(info)}"
-        # name_set = f"set{self.array_name(info)}"
         while True:
-            if is_defined(name) or is_defined(name.replace("get", "set", 1)):
+            setter_name = name.replace("get", "set", 1)
+            if name in self._info or setter_name in self._info:
                 name = "_" + name
             else:
                 break
-        return name  # if get_or_set == "get" else name_set
+        return name
 
 
 class GetId(NodeVisitor):
@@ -403,10 +401,10 @@ class Reorder(Transformation):
     def visit_IdentifierType(self, node):
         self.needs[self.current_node].update(node.names)
 
-    def visit_ID(self, node):
-        info = self.symbols.get_or_default(node.name, self.scope, None)
-        if info and info.scope is None:
-            self.needs[self.current_node].add(info.decl.declname)
+    # def visit_ID(self, node):
+    #     info = self.symbols.get_or_default(node.name, self.scope, None)
+    #     if info and info.scope is None:
+    #         self.needs[self.current_node].add(info.decl.declname)
 
     def visit_FuncCall(self, node):
         try:
