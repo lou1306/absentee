@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 
-from sys import exit
+from sys import exit, stdin
 
 from pycparser import c_parser, c_generator, plyparser
 import click
@@ -12,15 +12,17 @@ from recipe import build_toml
 
 
 @click.command()
-@click.argument('file', required=True, type=click.Path(exists=True))
+@click.argument('file', required=True,
+                type=click.Path(exists=True, allow_dash=True))
 @click.option('--conf', type=click.Path(exists=True))
 @click.option('--show-ast', default=False, is_flag=True)
 def main(file, conf, show_ast):
+
     if not conf and (not show_ast):
         raise ConfigError("No configuration file!")
 
     parser = c_parser.CParser()
-    with open(file) as f:
+    with (stdin if file == "-" else open(file)) as f:
         ast = parser.parse(f.read(), filename=file)
 
     if show_ast:
