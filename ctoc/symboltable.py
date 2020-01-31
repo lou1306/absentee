@@ -17,6 +17,7 @@ class TableEntry:
     scope: Node
     type: Node
     size: List[Node]
+    is_param: bool
 
     def int_size(self):
         for s in self.size:
