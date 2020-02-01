@@ -7,8 +7,8 @@ from collections import defaultdict
 
 from pycparser.c_ast import NodeVisitor, Node
 
-from error import TransformError
-from utils import track_scope
+from .error import TransformError
+from .utils import track_scope
 
 
 @dataclass

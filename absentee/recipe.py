@@ -1,20 +1,21 @@
 #!/usr/bin/env python3
 
 import toml
-from transforms import *
-from error import ConfigError
+from .transforms import *
+from .error import ConfigError
 
 
 def build_toml(toml_input, ast):
 
     BIND = {
-        "noArrays": NoArrays,
-        "renameCalls": RenameCalls,
-        "toLogical": ToLogical,
-        "retype": Retype,
-        "purgeTypedefs": PurgeTypedefs,
         "addLabels": AddLabels,
-        "initialize": Initialize
+        "constantFolding": ConstantFolding,
+        "initialize": Initialize,
+        "noArrays": NoArrays,
+        "purgeTypedefs": PurgeTypedefs,
+        "renameCalls": RenameCalls,
+        "retype": Retype,
+        "toLogical": ToLogical
     }
 
     conf = toml.loads(toml_input)

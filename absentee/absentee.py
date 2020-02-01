@@ -7,8 +7,8 @@ from pycparser import c_parser, c_generator, plyparser
 import click
 
 
-from error import BaseError, ParseError, ConfigError
-from recipe import build_toml
+from absentee.error import BaseError, ParseError, ConfigError
+from absentee.recipe import build_toml
 
 
 @click.command()

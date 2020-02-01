@@ -12,9 +12,9 @@ from pycparser.c_ast import NodeVisitor, IdentifierType, Compound, \
     ParamList, Assignment, Break, BinaryOp, Struct, Typedef
 
 
-from symboltable import SymbolTableBuilder
-from utils import track_scope, track_parent
-from error import TransformError
+from .symboltable import SymbolTableBuilder
+from .utils import track_scope, track_parent
+from .error import TransformError
 
 
 def to_string(node):
