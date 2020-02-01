@@ -9,7 +9,7 @@ from io import StringIO
 from pycparser.c_ast import NodeVisitor, IdentifierType, Compound, \
     EmptyStatement, Label, TypeDecl, FuncCall, ExprList, ID, Constant, \
     ArrayRef, ArrayDecl, Decl, Switch, Case, Return, FuncDecl, FuncDef, \
-    ParamList, Assignment, Break, BinaryOp, Struct, Typedef
+    ParamList, Assignment, Break, BinaryOp, Struct, Typedef, UnaryOp
 
 
 from .symboltable import SymbolTableBuilder
@@ -49,6 +49,22 @@ def make_function(type_, name, params, body):
     fdecl = FuncDecl(param_list, TypeDecl(name, [], type_))
     decl = make_decl(name, fdecl)
     return FuncDef(decl, [], body)
+
+
+def parse_int(val):
+    """ C99-Section 6.4.4.1
+    """
+
+    if val.startswith("0x"):
+        return int(val, base=16)
+    elif val.startswith("0"):
+        return int(val, base=8)
+    else:
+        return int(val)
+
+
+def is_const(n):
+    return isinstance(n, Constant)
 
 
 class Transformation(NodeVisitor):
@@ -303,6 +319,88 @@ class NoArrays(Transformation):
             else:
                 break
         return name
+
+
+@track_parent
+class ConstantFolding(Transformation):
+
+    def is_int_const(self, n):
+        return is_const(n) and (n.type) == "int"
+
+    def visit_UnaryOp(self, node):
+        _ops = {
+            "!": lambda x: 1 if x == 0 else 0,
+            "+": lambda x: x,
+            "-": lambda x: -x
+        }
+        self.generic_visit(node)
+        if is_const(node.expr) and node.op in _ops:
+            val = str(_ops[node.op](parse_int(node.expr.value)))
+            new_node = Constant("int", val)
+            self.replace(node, new_node)
+
+    def visit_BinaryOp(self, node):
+        """C99-Section 6.5
+        """
+        _ops = {
+            "+": lambda x, y: x + y,
+            "-": lambda x, y: x - y,
+            "*": lambda x, y: x * y,
+            "/": lambda x, y: x // y,
+            "%": lambda x, y: abs(x) % abs(y) * (1 - 2 * (x < 0)),
+            "<<": lambda x, y: x << y,
+            ">>": lambda x, y: x >> y,
+            "&": lambda x, y: x & y,
+            "|": lambda x, y: x | y,
+            "&&": lambda x, y: 0 if not bool(x) else int(bool(x & y)),
+            "||": lambda x, y: 1 if bool(x) else int(bool(x | y))
+        }
+        self.generic_visit(node)
+
+        # Commutative axioms
+        for n1, n2 in ((node.left, node.right), (node.right, node.left)):
+            if self.is_int_const(n1):
+                v1 = parse_int(n1.value)
+                if v1 == 0:
+                    if node.op in ("+", "-"):
+                        self.replace(node, n2)  # 0+x = 0-x = 0
+                    elif node.op == "*":
+                        self.replace(node, n1)  # 0*x = 0
+                elif v1 == 1 and node.op == "*":
+                    self.replace(node, n2)  # 1*x = x
+                elif v1 == -1 and node.op == "*":
+                    self.replace(node, UnaryOp("-", n2))  # -1*x = -x
+
+        # Non-commutative axioms
+        if self.is_int_const(node.left):
+            v = parse_int(node.left.value)
+            if v == 0 and node.op in (">>", "<<", "/", "%"):
+                self.replace(node, node.left)  # 0<<x = 0>>x = 0/x = 0%x = 0
+
+        if self.is_int_const(node.right):
+            v = parse_int(node.right.value)
+            if v == 0 and node.op in ("<<", ">>"):
+                self.replace(node, node.left)  # x<<0 = x>>0 = x
+            elif v == 1 and node.op == "/":
+                self.replace(node, node.left)  # x/1 = x
+            elif v == -1 and node.op == "/":
+                self.replace(node, UnaryOp("-", node.left))  # x/-1 = -x
+            elif abs(v) == 1 and node.op == "%":
+                node.right.value = "0"
+                self.replace(node, node.right)  # x%1 = 0
+
+        # Generic folding
+        ULLONG_MAX = 18446744073709551615
+        if self.is_int_const(node.left) and self.is_int_const(node.right):
+            if node.op in _ops:
+                try:
+                    val = _ops[node.op](parse_int(node.left.value), parse_int(node.right.value))
+                    # print(">>>",val)
+                    if abs(val) <= ULLONG_MAX:
+                        new_node = Constant("int", str(val))
+                        self.replace(node, new_node)
+                except ZeroDivisionError:
+                    pass
 
 
 class GetId(NodeVisitor):
