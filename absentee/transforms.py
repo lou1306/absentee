@@ -403,11 +403,6 @@ class Reorder(Transformation):
     def visit_IdentifierType(self, node):
         self.needs[self.current_node].update(node.names)
 
-    # def visit_ID(self, node):
-    #     info = self.symbols.get_or_default(node.name, self.scope, None)
-    #     if info and info.scope is None:
-    #         self.needs[self.current_node].add(info.decl.declname)
-
     def visit_FuncCall(self, node):
         try:
             self.needs[self.current_node].add(node.name.name)
@@ -416,6 +411,6 @@ class Reorder(Transformation):
         self.generic_visit(node)
 
     def visit_TypeDecl(self, node):
-        if node.declname:  # and not self.visiting_params:
+        if node.declname:
             self.declares[self.current_node].add(node.declname)
         self.generic_visit(node)
