@@ -1,2 +1,3 @@
 *.out
 examples/*.c
+tests/__pycache__
