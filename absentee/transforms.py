@@ -66,6 +66,7 @@ class Transformation(NodeVisitor):
             for attr, _ in node.children())
 
 
+@track_scope
 class Initialize(Transformation):
     """Add explicit initializers to declarations that lack one.
 
@@ -74,13 +75,6 @@ class Initialize(Transformation):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._scope = ""
-
-    def visit_FuncDef(self, node):
-        old_scope = self._scope
-        self._scope = "::".join([self._scope, node.decl.name])
-        self.generic_visit(node)
-        self._scope = old_scope
 
     def visit_ParamList(self, node):
         # Do not visit parameters
@@ -91,10 +85,11 @@ class Initialize(Transformation):
 
     def visit_Decl(self, node):
         self.generic_visit(node)
-        if all((type(node.type) == TypeDecl, node.init is None, self._scope,
+        if all((type(node.type) == TypeDecl, node.init is None, self.scope,
                 self.type_ in self.params or "*" in self.type_)):
-            func = self.params.get(self.type_, self.params["*"])
-            node.init = FuncCall(ID(func), ExprList([]))
+            func = self.params.get(self.type_, self.params.get("*", None))
+            if func:
+                node.init = FuncCall(ID(func), ExprList([]))
 
 
 class AddLabels(Transformation):
