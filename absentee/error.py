@@ -4,7 +4,7 @@ from click import echo
 
 
 def warn(msg):
-    echo(msg, err=True)
+    echo(f"[WARNING] {msg}", err=True)
 
 
 class BaseError(Exception):
@@ -31,7 +31,8 @@ class TransformError(BaseError):
     CODE = 6
 
     def __init__(self, message, coords):
-        self.message = f"{message}\nat: {coords}"
+        pos = f"\nat: {coords}" if coords else ""
+        self.message = f"{message}{pos}"
         self.coords = coords
 
 
