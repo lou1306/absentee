@@ -9,19 +9,6 @@ from .error import warn, ConfigError
 from .transforms import *
 from .symboltable import NoArrays
 
-BIND = {
-    "addLabels": AddLabels,
-    "constantFolding": ConstantFolding,
-    "initialize": Initialize,
-    "noArrays": NoArrays,
-    "purgeTypedefs": PurgeTypedefs,
-    "removeArgs": RemoveArgs,
-    "renameCalls": RenameCalls,
-    "retype": Retype,
-    "toLogical": ToLogical,
-    "prepend": None,
-    "append": lambda _, x: lambda: print(*x, sep="\n")
-}
 LPAR, RPAR = map(Suppress, "()")
 SEXPR = Forward()
 EMPTY = (LPAR + RPAR).setParseAction(lambda _: tuple())
@@ -32,13 +19,26 @@ CONF = OneOrMore(SEXPR)
 COMMENT = Suppress(";") + SkipTo(LineEnd())
 CONF.ignore(COMMENT)
 
-def parseConfig(s):
+def parse_config(s):
     try:
         return CONF.parseString(s, parseAll=True)
     except ParseException as e:
         raise ConfigError(e)
 
-def interpret(recipe, ast):
+def execute(recipe, ast):
+    BIND = {
+        "addLabels": AddLabels,
+        "constantFolding": ConstantFolding,
+        "initialize": Initialize,
+        "noArrays": NoArrays,
+        "purgeTypedefs": PurgeTypedefs,
+        "removeArgs": RemoveArgs,
+        "renameCalls": RenameCalls,
+        "retype": Retype,
+        "toLogical": ToLogical,
+        "prepend": None,
+        "append": None
+    }
     undefined_transforms = [s[0] for s in recipe if s[0] not in BIND]
     if undefined_transforms:
         warn(f"""The following transformations are not defined and will be ignored: {", ".join(undefined_transforms)}""")
