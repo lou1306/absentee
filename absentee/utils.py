@@ -1,6 +1,42 @@
 #!/usr/bin/env python3
 
 
+from io import StringIO
+from pycparser.c_ast import *
+
+def to_string(node):
+    """Hacky hack to get a string representation for an AST node
+    """
+
+    __s = StringIO()
+
+    def f(node):
+        __s.truncate(0)
+        __s.seek(0)
+        node.show(buf=__s)
+        __s.seek(0)
+        return __s.read()
+    return f(node)
+
+
+def make_decl(name, type_, init=None):
+    return Decl(
+        name=name, type=type_,
+        quals=[], storage=[], funcspec=[], init=init, bitsize=None)
+
+
+def make_typedecl(type_, name):
+    return TypeDecl(name, [], TypeDecl(name, [], IdentifierType([type_])))
+
+
+def make_function(type_, name, params, body):
+    param_list = ParamList([
+        make_decl(param_name, make_typedecl(param_type, param_name))
+        for param_type, param_name in params])
+    fdecl = FuncDecl(param_list, TypeDecl(name, [], type_))
+    decl = make_decl(name, fdecl)
+    return FuncDef(decl, [], body)
+
 def track_parent(cls):
     old_visit = getattr(cls, "generic_visit")
     setattr(cls, "parent", None)

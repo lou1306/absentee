@@ -1,29 +1,37 @@
 #!/usr/bin/env python3
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import List
 from functools import reduce
+from copy import deepcopy
 from collections import defaultdict
 
-from pycparser.c_ast import NodeVisitor, Node
+from pycparser.c_ast import *
 
 from .error import TransformError
-from .utils import track_scope
-
+from .utils import *
+from .transforms import Transformation, GetId, NoneRemoval, ConstantFolding
 
 @dataclass
 class TableEntry:
     decl: Node
     scope: Node
     type: Node
+    belongs_to: "SymbolTable" = field(repr=False)
     size: List[Node]
     is_param: bool
+    init: Node
 
     def int_size(self):
         for s in self.size:
             try:
+                if isinstance(s, ID):
+                    var = list(self.belongs_to.lookup(s.name))[0]
+                    init = deepcopy(var.init)
+                    ConstantFolding(var.init)()                
+                    s = init
                 yield int(s.value)
-            except AttributeError:
+            except (AttributeError, IndexError):
                 raise TransformError("Cannot statically determine size.",
                                      "" if s is None else s.coord)
 
@@ -113,12 +121,230 @@ class SymbolTableBuilder(NodeVisitor):
         self._dim.append(node.dim)
         self.generic_visit(node)
 
+    def visit_Decl(self, node):
+        self._init = node.init
+        self.generic_visit(node)
+        self._init = None
+
     def visit_TypeDecl(self, node):
         self.symbol_table[node.declname] = TableEntry(
+            belongs_to=self.symbol_table,
             decl=node,
             scope=self.scope,
             size=self._dim,
             type=node.type,
-            is_param=self._visit_paramlist
+            is_param=self._visit_paramlist,
+            init=self._init
         )
         self._reset()
+
+
+@track_scope
+@track_parent
+class NoArrays(Transformation):
+    """Splits arrays into separate variables.
+
+    Array lookups `x[i]` are replaced by calls to a getter: `getx(i)`.
+    Array assignments (e.g. x[i] = v) are replaced by calls to a setter: `setx(i, v)`.
+    """
+
+    def __init__(self, *args):
+        super().__init__(*args)
+        self.used = set()
+        self.accessors = set()
+        self.new_code = []
+        self.id_finder = GetId()
+
+    def _make_accessors(self, info):
+        """Build get() and set() function based on info.
+        """
+        name = self._array_name(info)
+        fname = self._make_getter_name(info)
+        size = info.sizeof()
+        params = [("int", f"x{i}") for i in range(len(info.size))]
+        mults = [
+            BinaryOp("*", a, ID(b[1]))
+            for a, b in zip(info.size, params[:-1])]
+
+        offset = ID(params[-1][1])
+        for m in mults:
+            offset = BinaryOp("+", m, offset)
+
+        cases = [
+            Case(Constant("int", str(i)), [Return(ID(f"{name}_{i}"))])
+            for i in range(size)
+        ]
+        body = Compound([Switch(offset, Compound(cases))])
+        self.accessors.add(make_function(info.type, fname, params, body))
+
+        cases = [
+            Case(Constant("int", str(i)), [
+                Assignment("=", ID(f"{name}_{i}"), ID("value")),
+                Break()])
+            for i in range(size)
+        ]
+        body = Compound([Switch(offset, Compound(cases))])
+        type_ = (
+            info.type.name
+            if type(info.type) == Struct
+            else info.type.names[0])
+        setter = make_function(
+            IdentifierType(["void"]), fname.replace("get", "set", 1),
+            params + [(type_, "value")], body)
+        self.accessors.add(setter)
+
+    def _array_name(self, info):
+        scope_slug = ""
+        if info.scope:
+            scope = str(info.scope)
+            scope_slug = scope[scope.find(":"):].replace(":", "_")
+        return f"{info.decl.declname}{scope_slug}"
+
+    def visit_Decl(self, node):
+        def flatten_init(init: InitList):
+            for expr in init.exprs:
+                if isinstance(expr, InitList):
+                    yield from flatten_init(expr)
+                else:
+                    yield expr
+
+        if type(node.type) == ArrayDecl:
+            info = self._info.get_info(node.name, self.scope)
+            if not info.is_param:
+                new_name = self._array_name(info)
+                init = list(flatten_init(node.init)) if node.init else None 
+
+                def do_decl(i):
+                    new_info = deepcopy(info)
+                    new_info.decl.declname = f"{new_name}_{i}"
+                    try:
+                        expr = init[i] if init else None
+                    except IndexError:
+                        raise TransformError("Unsupported array initializer.", node.init.coord)
+                    return make_decl(new_info.decl.declname, new_info.decl, expr)
+
+                self.delete(node)
+                decls = (do_decl(i) for i in range(info.sizeof()))
+                self.new_code += decls
+                self._make_accessors(info)
+        self.generic_visit(node)
+
+    def visit_FileAST(self, node):
+        self._info = SymbolTableBuilder().make_table(node)
+        self.generic_visit(node)
+        self.ast.ext.extend(self.new_code)
+        self.ast.ext.extend(
+            x for x in self.accessors if x.decl.name in self.used)
+        NoneRemoval(node).visit(node)
+        Reorder(node).visit(node)
+
+    def visit_Assignment(self, node):
+        self.generic_visit(node)
+        if node.lvalue.coord == "NoArrays":
+            node.lvalue.args.exprs.append(node.rvalue)
+            node.lvalue.name.name = \
+                node.lvalue.name.name.replace("get", "set", 1)
+            self.replace(node, node.lvalue)
+            self.used.add(node.lvalue.name.name)
+
+    def visit_ArrayRef(self, node):
+        self.generic_visit(node)
+        if type(node.name) == ID:
+            info = self._info.get_info(node.name.name, self.scope)
+            fname = self._make_getter_name(info)
+            _node = FuncCall(ID(fname), ExprList([]))
+            _node.coord = "NoArrays"
+            _node.args.exprs.append(node.subscript)
+            self.replace(node, _node)
+            self.used.add(fname)
+        elif node.name.coord == "NoArrays":
+            node.name.args.exprs.append(node.subscript)
+            self.replace(node, node.name)
+
+    def _make_getter_name(self, info):
+        name = f"get{self._array_name(info)}"
+        while True:
+            setter_name = name.replace("get", "set", 1)
+            if name in self._info or setter_name in self._info:
+                name = "_" + name
+            else:
+                break
+        return name
+
+@track_scope
+class Reorder(Transformation):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.id_finder = GetId()
+        self.current_node = None
+        self.needs = defaultdict(set)
+        self.declares = defaultdict(set)
+        self.symbols = SymbolTableBuilder().make_table(self.ast)
+
+    def visit_FileAST(self, node):
+        def tpsort(lst):
+            result = []
+            # We use a dict because it preserves the ordering of elements
+            # While allowing for constant-time remove (pop(), popitem())
+            unmarked = {x: None for x in lst}
+            tmp_marked = set()
+            marked = set()
+
+            def visit(n):
+                if n in marked or n in tmp_marked:
+                    return
+                unmarked.pop(n, None)
+                tmp_marked.add(n)
+
+                # Neighbor = anybody who needs something declared by n
+                neighbors = (x for x in tmp_marked.union(unmarked.keys())
+                             if x != n and
+                             self.needs[x].intersection(self.declares[n]))
+
+                for m in neighbors:
+                    visit(m)
+                tmp_marked.discard(n)
+                marked.add(n)
+                result.append(n)
+
+            while unmarked:
+                visit(unmarked.popitem()[0])
+
+            return result[::-1]
+
+        for n in node.ext:
+            self.current_node = n
+            self.visit(n)
+
+        typedefs = (n for n in node.ext if type(n) == Typedef)
+        decls = (n for n in node.ext if type(n) == Decl)
+        funcdefs = (n for n in node.ext if type(n) == FuncDef)
+
+        node.ext = [*tpsort(typedefs), *tpsort(decls), *tpsort(funcdefs)]
+
+    def visit_TypeDef(self, node):
+        self.declares[self.current_node].add(node.name)
+        self.generic_visit(node)
+
+    def visit_ParamList(self, node):
+        return
+
+    def visit_Decl(self, node):
+        if self.scope is None:
+            self.declares[self.current_node].add(node.name)
+        self.generic_visit(node)
+
+    def visit_IdentifierType(self, node):
+        self.needs[self.current_node].update(node.names)
+
+    def visit_FuncCall(self, node):
+        try:
+            self.needs[self.current_node].add(node.name.name)
+        except Exception:
+            pass
+        self.generic_visit(node)
+
+    def visit_TypeDecl(self, node):
+        if node.declname:
+            self.declares[self.current_node].add(node.declname)
+        self.generic_visit(node)
