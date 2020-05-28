@@ -63,7 +63,7 @@ def track_parent(cls):
                 setattr(self.parent, attr, array)
 
     def delete(self, node):
-        self.replace(node, None)
+        self.replace(node, EmptyStatement())
 
     def replace(self, node, new_node):
         for attr, n in self.parent.children():

@@ -156,13 +156,15 @@ class RemoveArgs(Transformation):
                     continue # TODO add a warning message?
             node.args.exprs = [n for n in node.args.exprs if n is not None]
 
+@track_parent
 class RenameCalls(Transformation):
     """Substitutes function calls.
     """
 
     def visit_FuncCall(self, node):
         node.name.name = self.params.get(node.name.name, node.name.name)
-
+        if node.name.name == tuple():
+            self.replace(node, EmptyStatement())
 
 class Retype(Transformation):
     """Transforms the type of variables.

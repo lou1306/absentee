@@ -235,7 +235,6 @@ class NoArrays(Transformation):
         self.ast.ext.extend(self.new_code)
         self.ast.ext.extend(
             x for x in self.accessors if x.decl.name in self.used)
-        NoneRemoval(node).visit(node)
         Reorder(node).visit(node)
 
     def visit_Assignment(self, node):
