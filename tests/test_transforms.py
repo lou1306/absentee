@@ -67,14 +67,5 @@ class TestConstantFolding(TransformTestCase):
 
         self._test_instances(instances, ConstantFolding)
 
-# class TestNoArrays(TransformTestCase):
-#     def test_1d_constructor(self):
-#         instances = (
-#             ("int arr[2] = {0, 1};", 
-#              """int arr_0 = 0;int arr_1 = 1;"""),
-#         )
-#         self._test_instances(instances, NoArrays)
-
-
 if __name__ == '__main__':
     unittest.main()
