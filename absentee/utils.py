@@ -4,6 +4,7 @@
 from io import StringIO
 from pycparser.c_ast import *
 
+
 def to_string(node):
     """Hacky hack to get a string representation for an AST node
     """
@@ -36,6 +37,7 @@ def make_function(type_, name, params, body):
     fdecl = FuncDecl(param_list, TypeDecl(name, [], type_))
     decl = make_decl(name, fdecl)
     return FuncDef(decl, [], body)
+
 
 def track_parent(cls):
     old_visit = getattr(cls, "generic_visit")

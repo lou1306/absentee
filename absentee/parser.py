@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 
-from pyparsing import Suppress, OneOrMore, ZeroOrMore, Forward, Word, QuotedString, alphanums, Group, SkipTo, LineEnd, ParseException
+from pyparsing import (
+    Suppress, OneOrMore, Forward, Word, QuotedString, alphanums, Group, SkipTo, 
+    LineEnd, ParseException)
 from pyparsing import pyparsing_common as ppc
 
 from pycparser import c_generator
@@ -19,11 +21,13 @@ CONF = OneOrMore(SEXPR)
 COMMENT = Suppress(";") + SkipTo(LineEnd())
 CONF.ignore(COMMENT)
 
+
 def parse_config(s):
     try:
         return CONF.parseString(s, parseAll=True).asList()
     except ParseException as e:
         raise ConfigError(e)
+
 
 def execute(recipe, ast):
     BIND = {
@@ -41,23 +45,24 @@ def execute(recipe, ast):
     }
     undefined_transforms = [s[0] for s in recipe if s[0] not in BIND]
     if undefined_transforms:
-        warn(f"""The following transformations are not defined and will be ignored: {", ".join(undefined_transforms)}""")
-    
+        warn(
+            f"""The following transformations are not defined and will be ignored: {", ".join(undefined_transforms)}""")
+
     others = [s for s in recipe if s[0] not in ("append", "prepend")]
-    prepends = [s[1:] for s in recipe if s[0] == "prepend"] 
-    appends = [s[1:] for s in recipe if s[0] == "append"] 
+    prepends = [s[1:] for s in recipe if s[0] == "prepend"]
+    appends = [s[1:] for s in recipe if s[0] == "append"]
 
     transforms = [
         BIND[s[0]](ast, s[1:])
-            for s in others
-            if s[0] in BIND
-        ]
+        for s in others
+        if s[0] in BIND
+    ]
 
     # The x[1:-1] is to remove quotes
     yield from ("\n".join(x[1:-1] for x in s) for s in prepends)
     for t in transforms:
         t()
-    cgen = c_generator.CGenerator() # todo make a streaming C generator
+    cgen = c_generator.CGenerator()  # todo make a streaming C generator
     yield cgen.visit(ast)
     yield from ("\n".join(x[1:-1] for x in s) for s in appends)
 
@@ -76,7 +81,7 @@ def execute(recipe, ast):
 #         """,
 #         """
 #         (toLogical)
-#         (initialize 
+#         (initialize
 #             (char __VERIFIER_nondet_char)
 #             (int __VERIFIER_nondet_char)
 #             ; Wildcard, will apply to all other declarations
