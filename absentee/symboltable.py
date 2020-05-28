@@ -10,7 +10,7 @@ from pycparser.c_ast import *
 
 from .error import TransformError
 from .utils import *
-from .transforms import Transformation, GetId, NoneRemoval, ConstantFolding
+from .transforms import Transformation, GetId, ConstantFolding
 
 @dataclass
 class TableEntry:
@@ -95,6 +95,7 @@ class SymbolTableBuilder(NodeVisitor):
     def __init__(self):
         self._visit_paramlist = False
         self._reset()
+        self._init = None
 
     def make_table(self, node):
         self.symbol_table = SymbolTable()
