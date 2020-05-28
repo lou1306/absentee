@@ -16,10 +16,11 @@ class TransformTestCase(unittest.TestCase):
         transform(ast, params).visit(ast)
         result = cgen.visit(ast).replace("\n", "").strip()
         self.assertEqual(result, expected_output)
+        self.assertEqual(result, expected_output)
 
     def _test_instances(self, instances, transform, params={}):
-        for in_, expected in instances:
-            self._test_single(in_, expected, transform, params)
+        for input_string, expected in instances:
+            self._test_single(input_string, expected.strip(), transform, params)
 
 
 class TestInitialize(TransformTestCase):
@@ -65,6 +66,14 @@ class TestConstantFolding(TransformTestCase):
         )
 
         self._test_instances(instances, ConstantFolding)
+
+# class TestNoArrays(TransformTestCase):
+#     def test_1d_constructor(self):
+#         instances = (
+#             ("int arr[2] = {0, 1};", 
+#              """int arr_0 = 0;int arr_1 = 1;"""),
+#         )
+#         self._test_instances(instances, NoArrays)
 
 
 if __name__ == '__main__':
