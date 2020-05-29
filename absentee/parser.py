@@ -43,6 +43,7 @@ def execute(recipe, ast):
         "prepend": None,
         "append": None
     }
+    recipe = [s for s in recipe if s]
     undefined_transforms = [s[0] for s in recipe if s[0] not in BIND]
     if undefined_transforms:
         warn(
