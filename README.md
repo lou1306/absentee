@@ -15,7 +15,29 @@ So far, it can:
 ## Basic usage
 
 `absentee` takes as input a C program and a configuration file, which specifies
-the transformations to be performed.
+the transformations to be performed:
+
+```bash
+$ python3 -m absentee --conf path/to/conf path/to/file
+```
+
+The result is printed to standard output: use output redirection `>` to save
+the result to a file.
+
+You may check out further options with `-h` or `--help`:
+
+```
+$ python -m absentee --help
+Usage: python - m absentee [OPTIONS] FILE
+
+  absentee C transformation tool
+
+Options:
+  --conf PATH  The path to the configuration file.
+  --show-ast   Show the syntax tree of FILE and exit.  [default: False]
+  --version    Show the version and exit.
+  -h, --help   Show this message and exit.
+```
 
 ## Example configuration 
 
@@ -53,11 +75,12 @@ gcc -E program.c | ./absentee.py - --conf <...>
 
 ## Similar software
 
-Absentee shares some similarities with [Coccinelle](coccinelle.lip6.fr/).
+Absentee shares some similarities with [Coccinelle](http://coccinelle.lip6.fr/).
 Coccinelle aims at handling collateral evolution (such as API changes) and
 automated bug finding/fixing.
 Absentee's goal, on the other hand, is to automate instrumentation of code for
 analysis purposes.
 
 [CIL](https://cil-project.github.io/cil/) is a subset of C for program analysis
-and transformation. 
+and transformation, and a tool to reduce arbitrary C programs into said
+subset. The tool, however, seems to be hardly maintained anymore.
