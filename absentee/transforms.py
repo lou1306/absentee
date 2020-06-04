@@ -159,12 +159,21 @@ class RemoveArgs(Transformation):
 @track_parent
 class RenameCalls(Transformation):
     """Substitutes function calls.
+    
+    The function replaces calls to `f` with calls to `self.params[f]` (if any).
+    If `self.params[f]` is the empty tuple AND the call does NOT occur as part
+    of an expression, the call is replaced by an empty statement.
     """
 
     def visit_FuncCall(self, node):
-        node.name.name = self.params.get(node.name.name, node.name.name)
-        if node.name.name == tuple():
-            self.replace(node, EmptyStatement())
+        if node.name.name in self.params:
+            new_name = self.params.get(node.name.name, node.name.name)
+            if new_name == tuple():
+                if type(self.parent) == Compound:
+                    self.replace(node, EmptyStatement())
+            else: 
+                node.name.name = new_name
+        
 
 class Retype(Transformation):
     """Transforms the type of variables.
