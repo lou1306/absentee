@@ -68,32 +68,4 @@ def execute(recipe, ast):
     yield from ("\n".join(x[1:-1] for x in s) for s in appends)
 
 
-# if __name__ == "__main__":
-#     tests = [
-#         "()",
-#         "(+ 1 2 3)",
-#         "(+ (* 1 2) 3)",
-#         """("Hello" "\\"World\\" !!")"""
-#         """
-#         ; Multiple lines
-#         (+ (* 1 2) 3) ; comment
-#         ()
-#         (+ "a" "b") ; comment
-#         """,
-#         """
-#         (toLogical)
-#         (initialize
-#             (char __VERIFIER_nondet_char)
-#             (int __VERIFIER_nondet_char)
-#             ; Wildcard, will apply to all other declarations
-#             (() __VERIFIER_nondet_int)
-#         )
-#         (renameCalls __VERIFIER_nondet __VERIFIER_nondet_int)
-#         (renameCalls nondet __VERIFIER_nondet_int)
-#         (retype TYPEOFVALUES char)
-#         (noArrays)
-#         """
 
-#     ]
-#     for s in tests:
-#         print(s, ">>", parseConfig(s))
