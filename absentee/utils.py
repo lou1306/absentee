@@ -4,6 +4,7 @@
 from io import StringIO
 from pycparser.c_ast import *
 
+from .error import TransformError
 
 def to_string(node):
     """Hacky hack to get a string representation for an AST node
@@ -61,6 +62,8 @@ def track_parent(cls):
         for attr, n in self.parent.children():
             if n == node:
                 attr, i, array = self._handle_array_attr(attr, self.parent)
+                if i is None:
+                    raise TransformError(f"insert_before() on invalid node: {self.parent}")
                 array = [*array[:i], *nodes, *array[i:]]
                 setattr(self.parent, attr, array)
 
