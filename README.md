@@ -56,6 +56,29 @@ Configurations are in a simplified s-expression format. Here is an example:
 )
 ```
 
+If we run `absentee` with this configuration on the following file:
+
+```c
+int main(void) {
+  char x = 1;
+  f(1, 2, 3, 4);
+  badfunction(x);
+  return 0;
+}
+```
+
+We obtain this:
+
+```c
+int pow2(int x) { return x * x; }
+
+int main(void) {
+  char x = 1;
+  g(1, 3);
+  return 0;
+}
+```
+
 ## Known limitations
 
 Absentee is based on [pycparser](https://github.com/eliben/pycparser).
