@@ -8,14 +8,18 @@ from pyparsing import pyparsing_common as ppc
 from pycparser import c_generator
 
 from .error import warn, ConfigError
-from .transforms import *
+from .transforms import (
+    AddLabels, ConstantFolding, Initialize, PurgeTypedefs,
+    RemoveArgs, RenameCalls, Retype, ToLogical)
 from .symboltable import NoArrays
+from .utils import MyCGen
 
 LPAR, RPAR = map(Suppress, "()")
 SEXPR = Forward()
 EMPTY = (LPAR + RPAR).setParseAction(lambda _: tuple())
 ATOM = ppc.number() | Word(alphanums + "+-.:*/_=")
-STR = QuotedString('"', escChar='\\', unquoteResults=False).addParseAction(lambda toks: toks[0].replace('\\"', '"'))
+STR = QuotedString('"', escChar='\\', unquoteResults=False)\
+      .addParseAction(lambda toks: toks[0].replace('\\"', '"'))
 SEXPR <<= EMPTY | Group((LPAR + OneOrMore(STR | ATOM | SEXPR) + RPAR))
 CONF = OneOrMore(SEXPR)
 COMMENT = Suppress(";") + SkipTo(LineEnd())
@@ -47,7 +51,9 @@ def execute(recipe, ast):
     undefined_transforms = [s[0] for s in recipe if s[0] not in BIND]
     if undefined_transforms:
         warn(
-            f"""The following transformations are not defined and will be ignored: {", ".join(undefined_transforms)}""")
+            "The following transformations "
+            "are not defined and will be ignored: "
+            ", ".join(undefined_transforms))
 
     others = [s for s in recipe if s[0] not in ("append", "prepend")]
     prepends = [s[1:] for s in recipe if s[0] == "prepend"]

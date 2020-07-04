@@ -3,6 +3,7 @@
 import unittest
 from absentee.parser import parse_config
 
+
 class ParserTestCase(unittest.TestCase):
     def _test_single(self, input_, expected):
         parsed = parse_config(input_)
@@ -27,10 +28,13 @@ class ParserTestCase(unittest.TestCase):
         self._test_instances([
             ("()", [tuple()]),
             ("(1)", [[1]]),
-            ("""("Hello" "\\"World\\" !!")""", [['"Hello"', '''""World" !!"''']]),
+            (
+                """("Hello" "\\"World\\" !!")""",
+                [['"Hello"', '''""World" !!"''']]),
             ("(+ (* 1 2) 3)", [["+", ["*", 1, 2], 3]]),
             (long_sexpr, expected)
         ])
+
 
 if __name__ == '__main__':
     unittest.main()

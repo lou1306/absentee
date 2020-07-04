@@ -2,18 +2,13 @@
 
 # from functools import reduce
 # from operator import mul
-from collections import defaultdict
 
-from pycparser.c_ast import NodeVisitor, IdentifierType, Compound, \
-    EmptyStatement, Label, TypeDecl, FuncCall, ExprList, ID, Constant, \
-    ArrayRef, ArrayDecl, Decl, Switch, Case, Return, FuncDecl, FuncDef, \
-    ParamList, Assignment, Break, BinaryOp, Struct, Typedef, UnaryOp
+from pycparser.c_ast import (
+    NodeVisitor, IdentifierType, Compound, UnaryOp,
+    EmptyStatement, Label, TypeDecl, FuncCall, ExprList, ID, Constant)
 
-
-# from .symboltable import SymbolTableBuilder
-from .utils import *
+from .utils import track_parent, track_scope
 from .error import TransformError
-
 
 
 def parse_int(val):
@@ -31,11 +26,15 @@ def parse_int(val):
 def is_const(n):
     return isinstance(n, Constant)
 
+
 def to_dict(lst):
     try:
         return dict(lst)
     except ValueError:
-        raise TransformError(f"""({" ".join(lst)}) invalid: expected a list of pairs.""", None)
+        raise TransformError(
+            f"""({" ".join(lst)}) invalid: expected a list of pairs.""",
+            None)
+
 
 class Transformation(NodeVisitor):
     def __init__(self, ast, params={}):
@@ -138,11 +137,11 @@ class PurgeTypedefs(Transformation):
 
 class RemoveArgs(Transformation):
     """Removes arguments from function calls.
-    
-    (removeArgs (f 0)) ---> removes the 1st argument from all calls to f
-    (removeArgs (f (1 3))) ---> removes 2nd and 4th argument from all calls to f
-    """
 
+    Examples:
+    (removeArgs (f 0)) removes the 1st argument from all calls to f
+    (removeArgs (f (1 3))) removes 2nd and 4th argument from all calls to f
+    """
 
     def visit_FuncCall(self, node):
         if (node.name.name) in self.params:
@@ -153,13 +152,14 @@ class RemoveArgs(Transformation):
                 try:
                     node.args.exprs[i] = None
                 except IndexError:
-                    continue # TODO add a warning message?
+                    continue  # TODO add a warning message?
             node.args.exprs = [n for n in node.args.exprs if n is not None]
+
 
 @track_parent
 class RenameCalls(Transformation):
     """Substitutes function calls.
-    
+
     The function replaces calls to `f` with calls to `self.params[f]` (if any).
     If `self.params[f]` is the empty tuple AND the call does NOT occur as part
     of an expression, the call is replaced by an empty statement.
@@ -171,9 +171,9 @@ class RenameCalls(Transformation):
             if new_name == tuple():
                 if type(self.parent) == Compound:
                     self.replace(node, EmptyStatement())
-            else: 
+            else:
                 node.name.name = new_name
-        
+
 
 class Retype(Transformation):
     """Transforms the type of variables.
@@ -201,7 +201,6 @@ class ToLogical(Transformation):
     def visit_BinaryOp(self, node):
         node.op = {"&": "&&", "|": "||"}.get(node.op, node.op)
         self.generic_visit(node)
-
 
 
 @track_parent
@@ -277,7 +276,9 @@ class ConstantFolding(Transformation):
         if self.is_int_const(node.left) and self.is_int_const(node.right):
             if node.op in _ops:
                 try:
-                    val = _ops[node.op](parse_int(node.left.value), parse_int(node.right.value))
+                    val = _ops[node.op](
+                        parse_int(node.left.value),
+                        parse_int(node.right.value))
                     # print(">>>",val)
                     if abs(val) <= ULLONG_MAX:
                         new_node = Constant("int", str(val))
@@ -316,4 +317,3 @@ class NoneRemoval(Transformation):
             ls = [x for x in ls if x is not None]
             setattr(node, attr, ls)
         super().generic_visit(node)
-
