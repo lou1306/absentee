@@ -165,7 +165,7 @@ class NoArrays(Transformation):
         params = [("int", f"x{i}") for i in range(len(info.size))]
         mults = [
             BinaryOp("*", a, ID(b[1]))
-            for a, b in zip(info.size, params[:-1])]
+            for a, b in zip(info.size[1:], params[:-1])]
 
         offset = ID(params[-1][1])
         for m in mults:
