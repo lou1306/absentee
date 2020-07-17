@@ -9,10 +9,10 @@ from pycparser import c_generator
 
 from .error import warn, ConfigError
 from .transforms import (
-    AddLabels, ConstantFolding, Initialize, PurgeTypedefs,
+    ConstantFolding, Initialize, PurgeTypedefs,
     RemoveArgs, RenameCalls, Retype, ToLogical)
 from .symboltable import NoArrays
-from .utils import MyCGen
+# from .utils import MyCGen
 
 LPAR, RPAR = map(Suppress, "()")
 SEXPR = Forward()
@@ -72,6 +72,3 @@ def execute(recipe, ast):
     cgen = c_generator.CGenerator()  # todo make a streaming C generator
     yield cgen.visit(ast)
     yield from ("\n".join(x[1:-1] for x in s) for s in appends)
-
-
-

@@ -5,7 +5,7 @@
 
 from pycparser.c_ast import (
     NodeVisitor, IdentifierType, Compound, UnaryOp,
-    EmptyStatement, Label, TypeDecl, FuncCall, ExprList, ID, Constant)
+    EmptyStatement, TypeDecl, FuncCall, ExprList, ID, Constant)
 
 from .utils import track_parent, track_scope
 from .error import TransformError

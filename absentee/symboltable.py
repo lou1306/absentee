@@ -6,11 +6,18 @@ from functools import reduce
 from copy import deepcopy
 from collections import defaultdict
 
-from pycparser.c_ast import *
+from pycparser.c_ast import (
+    Node, NodeVisitor, ID, BinaryOp, Constant, Switch, Case, Compound,
+    IdentifierType, Assignment, Decl, Break, ArrayDecl, Return, Struct,
+    InitList, Typedef, FuncDef, FuncCall, ExprList
+)
 
 from .error import TransformError
-from .utils import *
+from .utils import (
+    make_decl, make_function, track_parent, track_scope
+)
 from .transforms import Transformation, GetId, ConstantFolding
+
 
 @dataclass
 class TableEntry:
@@ -28,7 +35,7 @@ class TableEntry:
                 if isinstance(s, ID):
                     var = list(self.belongs_to.lookup(s.name))[0]
                     init = deepcopy(var.init)
-                    ConstantFolding(var.init)()                
+                    ConstantFolding(var.init)()
                     s = init
                 yield int(s.value)
             except (AttributeError, IndexError):
@@ -145,8 +152,11 @@ class SymbolTableBuilder(NodeVisitor):
 class NoArrays(Transformation):
     """Splits arrays into separate variables.
 
-    Array lookups `x[i]` are replaced by calls to a getter: `getx(i)`.
-    Array assignments (e.g. x[i] = v) are replaced by calls to a setter: `setx(i, v)`.
+    Array lookups `x[i]` are replaced by calls to a getter: `getx(i)`, or by a
+    variable reference when all indices are constants.
+
+    Array assignments (e.g. x[i] = v) are replaced by calls to a setter:
+    `setx(i, v)`.
     """
 
     def __init__(self, *args):
@@ -213,7 +223,7 @@ class NoArrays(Transformation):
             info = self._info.get_info(node.name, self.scope)
             if not info.is_param:
                 new_name = self._array_name(info)
-                init = list(flatten_init(node.init)) if node.init else None 
+                init = list(flatten_init(node.init)) if node.init else None
 
                 def do_decl(i):
                     new_info = deepcopy(info)
@@ -221,8 +231,11 @@ class NoArrays(Transformation):
                     try:
                         expr = init[i] if init else None
                     except IndexError:
-                        raise TransformError("Unsupported array initializer.", node.init.coord)
-                    return make_decl(new_info.decl.declname, new_info.decl, expr)
+                        raise TransformError(
+                                "Unsupported array initializer.",
+                                node.init.coord)
+                    return make_decl(
+                        new_info.decl.declname, new_info.decl, expr)
 
                 self.delete(node)
                 decls = (do_decl(i) for i in range(info.sizeof()))
@@ -238,9 +251,17 @@ class NoArrays(Transformation):
             x for x in self.accessors if x.decl.name in self.used)
         Reorder(node).visit(node)
 
+    def visit_UnaryOp(self, node):
+        self.generic_visit(node)
+        # todo warning/error if an array element is incremented/decremented
+        # from within an expression.
+
     def visit_Assignment(self, node):
         self.generic_visit(node)
-        if node.lvalue.coord == "NoArrays":
+        if (
+            isinstance(node.lvalue.coord, tuple) and
+            node.lvalue.coord[0] == "NoArrays"
+        ):
             node.lvalue.args.exprs.append(node.rvalue)
             node.lvalue.name.name = \
                 node.lvalue.name.name.replace("get", "set", 1)
@@ -248,18 +269,62 @@ class NoArrays(Transformation):
             self.used.add(node.lvalue.name.name)
 
     def visit_ArrayRef(self, node):
+        def replace_with(n, info):
+            """If the array size is statically determined,
+            all indices in `n` are constants, and the number of indices
+            is the same as the number of array dimensions (i.e., we are
+            done with building the getter function call), then replace
+            `node` with a reference to the corresponding array variable.
+            Otherwise, replace `node` with `n`
+
+            Eg.
+            ```c
+            int x[2][2];
+            int y = x[1][0];
+            int z = x[y];
+            ```
+            becomes
+            ```c
+            int x_0, x_1, x_2, x_3;
+            int y = x_2; // Was: getx(1, 0)
+            int z = getx(y);
+            ```
+            """
+
+            if all((
+                all(type(i) == Constant for i in info.size),
+                all(type(i) == Constant for i in n.args.exprs),
+                len(n.args.exprs) == len(info.size)
+            )):
+                var_stem = self._array_name(info)
+                offset = sum(
+                    int(a.value) * int(b.value)
+                    for a, b in zip(info.size[1:], n.args.exprs[:-1]))
+                offset += int(n.args.exprs[-1].value)
+                self.replace(node, ID(f"{var_stem}_{offset}"))
+            else:
+                self.replace(node, n)
+
+        # first, recurse into node's children
         self.generic_visit(node)
+        # base case: name[subscript] where name is an ID
         if type(node.name) == ID:
             info = self._info.get_info(node.name.name, self.scope)
             fname = self._make_getter_name(info)
             _node = FuncCall(ID(fname), ExprList([]))
-            _node.coord = "NoArrays"
+            _node.coord = ("NoArrays", info)
             _node.args.exprs.append(node.subscript)
-            self.replace(node, _node)
+            # _node = try_turn_into_id(_node, info)
+            replace_with(_node, info)
             self.used.add(fname)
-        elif node.name.coord == "NoArrays":
-            node.name.args.exprs.append(node.subscript)
-            self.replace(node, node.name)
+        # node.name (was) itself an ArrayRef & got replaced during the visit
+        elif (
+            isinstance(node.name.coord, tuple) and
+            node.name.coord[0] == "NoArrays"
+        ):
+            _node = node.name
+            _node.args.exprs.append(node.subscript)
+            _node = replace_with(_node, node.name.coord[1])
 
     def _make_getter_name(self, info):
         name = f"get{self._array_name(info)}"
@@ -270,6 +335,7 @@ class NoArrays(Transformation):
             else:
                 break
         return name
+
 
 @track_scope
 class Reorder(Transformation):
