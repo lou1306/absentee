@@ -35,7 +35,6 @@ def parse_config(s):
 
 def execute(recipe, ast):
     BIND = {
-        "addLabels": AddLabels,
         "constantFolding": ConstantFolding,
         "initialize": Initialize,
         "noArrays": NoArrays,

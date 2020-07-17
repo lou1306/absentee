@@ -80,21 +80,6 @@ class Initialize(Transformation):
                 node.init = FuncCall(ID(func), ExprList([]))
 
 
-class AddLabels(Transformation):
-    """Decorate each function <f> with ENTRY_<f> and EXIT_<f> labels
-    """
-
-    def visit_FuncDef(self, node):
-        if type(node.body) == Compound:
-            name = node.decl.name
-            entry_label = Label("ENTRY_{}".format(name), EmptyStatement())
-            exit_label = Label("EXIT_{}".format(name), EmptyStatement())
-
-            if node.body.block_items:
-                node.body.block_items.insert(0, entry_label)
-                node.body.block_items.append(exit_label)
-
-
 class PurgeTypedefs(Transformation):
     """Removes all typedefs that are synonyms for C base types.
     """
