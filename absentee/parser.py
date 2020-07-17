@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 from pyparsing import (
-    Suppress, OneOrMore, Forward, Word, QuotedString, alphanums, Group, SkipTo, 
+    Suppress, OneOrMore, Forward, Word, QuotedString, alphanums, Group, SkipTo,
     LineEnd, ParseException)
 from pyparsing import pyparsing_common as ppc
 
@@ -35,16 +35,16 @@ def parse_config(s):
 
 def execute(recipe, ast):
     BIND = {
-        "constantFolding": ConstantFolding,
-        "initialize": Initialize,
-        "noArrays": NoArrays,
-        "purgeTypedefs": PurgeTypedefs,
-        "removeArgs": RemoveArgs,
-        "renameCalls": RenameCalls,
-        "retype": Retype,
-        "toLogical": ToLogical,
-        "prepend": None,
-        "append": None
+        "fold-constants": ConstantFolding,
+        "add-initializers": Initialize,
+        "without-arrays": NoArrays,
+        "without-typedefs": PurgeTypedefs,
+        "remove-args": RemoveArgs,
+        "replace-calls": RenameCalls,
+        "replace-types": Retype,
+        "without-bitwise": ToLogical,
+        "add-text-before": None,
+        "add-text-after": None
     }
     recipe = [s for s in recipe if s]
     undefined_transforms = [s[0] for s in recipe if s[0] not in BIND]
@@ -54,9 +54,9 @@ def execute(recipe, ast):
             "are not defined and will be ignored: "
             ", ".join(undefined_transforms))
 
-    others = [s for s in recipe if s[0] not in ("append", "prepend")]
-    prepends = [s[1:] for s in recipe if s[0] == "prepend"]
-    appends = [s[1:] for s in recipe if s[0] == "append"]
+    others = [s for s in recipe if not s[0].startswith("add-text")]
+    prepends = [s[1:] for s in recipe if s[0] == "add-text-before"]
+    appends = [s[1:] for s in recipe if s[0] == "add-text-after"]
 
     transforms = [
         BIND[s[0]](ast, s[1:])
