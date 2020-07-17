@@ -55,7 +55,7 @@ class Transformation(NodeVisitor):
 
 
 @track_scope
-class Initialize(Transformation):
+class AddInitializers(Transformation):
     """Add explicit initializers to declarations that lack one.
 
     Example: int a; --> int a = call();
@@ -80,7 +80,7 @@ class Initialize(Transformation):
                 node.init = FuncCall(ID(func), ExprList([]))
 
 
-class PurgeTypedefs(Transformation):
+class WithoutTypedefs(Transformation):
     """Removes all typedefs that are synonyms for C base types.
     """
 
@@ -142,7 +142,7 @@ class RemoveArgs(Transformation):
 
 
 @track_parent
-class RenameCalls(Transformation):
+class ReplaceCalls(Transformation):
     """Substitutes function calls.
 
     The function replaces calls to `f` with calls to `self.params[f]` (if any).
@@ -160,7 +160,7 @@ class RenameCalls(Transformation):
                 node.name.name = new_name
 
 
-class Retype(Transformation):
+class ReplaceTypes(Transformation):
     """Transforms the type of variables.
     """
 
@@ -179,7 +179,7 @@ class Retype(Transformation):
             node.type.names = [self.params[self.visiting]]
 
 
-class ToLogical(Transformation):
+class WithoutBitwise(Transformation):
     """Transforms bitwise AND/OR operators into their logical counterparts.
     """
 
@@ -189,7 +189,7 @@ class ToLogical(Transformation):
 
 
 @track_parent
-class ConstantFolding(Transformation):
+class FoldConstants(Transformation):
 
     def is_int_const(self, n):
         return is_const(n) and (n.type) == "int"

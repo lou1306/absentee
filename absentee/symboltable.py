@@ -16,7 +16,7 @@ from .error import TransformError
 from .utils import (
     make_decl, make_function, track_parent, track_scope
 )
-from .transforms import Transformation, GetId, ConstantFolding
+from .transforms import Transformation, GetId, FoldConstants
 
 
 @dataclass
@@ -35,7 +35,7 @@ class TableEntry:
                 if isinstance(s, ID):
                     var = list(self.belongs_to.lookup(s.name))[0]
                     init = deepcopy(var.init)
-                    ConstantFolding(var.init)()
+                    FoldConstants(var.init)()
                     s = init
                 yield int(s.value)
             except (AttributeError, IndexError):
@@ -149,7 +149,7 @@ class SymbolTableBuilder(NodeVisitor):
 
 @track_scope
 @track_parent
-class NoArrays(Transformation):
+class WithoutArrays(Transformation):
     """Splits arrays into separate variables.
 
     Array lookups `x[i]` are replaced by calls to a getter: `getx(i)`, or by a

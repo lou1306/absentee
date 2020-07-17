@@ -9,10 +9,9 @@ from pycparser import c_generator
 
 from .error import warn, ConfigError
 from .transforms import (
-    ConstantFolding, Initialize, PurgeTypedefs,
-    RemoveArgs, RenameCalls, Retype, ToLogical)
-from .symboltable import NoArrays
-# from .utils import MyCGen
+    FoldConstants, AddInitializers, WithoutTypedefs,
+    RemoveArgs, ReplaceCalls, ReplaceTypes, WithoutBitwise)
+from .symboltable import WithoutArrays
 
 LPAR, RPAR = map(Suppress, "()")
 SEXPR = Forward()
@@ -35,14 +34,14 @@ def parse_config(s):
 
 def execute(recipe, ast):
     BIND = {
-        "fold-constants": ConstantFolding,
-        "add-initializers": Initialize,
-        "without-arrays": NoArrays,
-        "without-typedefs": PurgeTypedefs,
+        "fold-constants": FoldConstants,
+        "add-initializers": AddInitializers,
+        "without-arrays": WithoutArrays,
+        "without-typedefs": WithoutTypedefs,
         "remove-args": RemoveArgs,
-        "replace-calls": RenameCalls,
-        "replace-types": Retype,
-        "without-bitwise": ToLogical,
+        "replace-calls": ReplaceCalls,
+        "replace-types": ReplaceTypes,
+        "without-bitwise": WithoutBitwise,
         "add-text-before": None,
         "add-text-after": None
     }
