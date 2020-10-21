@@ -45,12 +45,12 @@ Configurations are in a simplified s-expression format. Here is an example:
 
 ```lisp
 ; Print code before the input program
-(prepend "int pow2(int x) { return x * x; }")
+(add-text-before "int pow2(int x) { return x * x; }")
 ; Change all char variables to int
-(retype (char int))
+(replace-types (char int))
 ; Remove the 2nd and 4th argument from all calls to function f
-(removeArgs (f 1 3)) ; indices are 0-based
-(renameCalls 
+(remove-args (f 1 3)) ; indices are 0-based
+(replace-calls 
   (f g) ; Turn all calls to f into calls to g 
   (badfunction ()) ; Remove all calls to badfunction
 )
@@ -86,7 +86,7 @@ This means that:
 
 * C extensions are unsupported.
 
-* Absentee's input file must be preprocessed.
+* Absentee can only accept preprocessed input files. 
   As a consequence, `absentee`'s output will lack comments, preprocessor
   directives, etc. that were present in the original source code.
   One can preprocess a generic C file (with `gcc -E`, for instance) and feed
@@ -107,3 +107,8 @@ analysis purposes.
 [CIL](https://cil-project.github.io/cil/) is a subset of C for program analysis
 and transformation, and a tool to reduce arbitrary C programs into said
 subset. The tool, however, seems to be hardly maintained anymore.
+
+[ROSE](http://rosecompiler.org/) is a framework to develop source-to-source
+transformation and analysis tools. It is a huge project, supporting multiple
+languages (C, C++, Fortran, Java, ...) as well as executable (binary) files.
+
