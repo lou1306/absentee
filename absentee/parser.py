@@ -49,8 +49,8 @@ def execute(recipe, ast):
     undefined_transforms = [s[0] for s in recipe if s[0] not in BIND]
     if undefined_transforms:
         warn(
-            "The following transformations "
-            "are not defined and will be ignored: "
+            "The following transformations " +
+            "are not defined and will be ignored: " +
             ", ".join(undefined_transforms))
 
     others = [s for s in recipe if not s[0].startswith("add-text")]
