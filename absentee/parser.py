@@ -34,23 +34,23 @@ def parse_config(s):
 
 def execute(recipe, ast):
     BIND = {
-        "fold-constants": FoldConstants,
         "add-initializers": AddInitializers,
-        "without-arrays": WithoutArrays,
-        "without-typedefs": WithoutTypedefs,
+        "add-text-after": None,
+        "add-text-before": None,
+        "fold-constants": FoldConstants,
         "remove-args": RemoveArgs,
         "replace-calls": ReplaceCalls,
         "replace-types": ReplaceTypes,
+        "without-arrays": WithoutArrays,
         "without-bitwise": WithoutBitwise,
-        "add-text-before": None,
-        "add-text-after": None
+        "without-typedefs": WithoutTypedefs,
     }
     recipe = [s for s in recipe if s]
     undefined_transforms = [s[0] for s in recipe if s[0] not in BIND]
     if undefined_transforms:
         warn(
-            "The following transformations " +
-            "are not defined and will be ignored: " +
+            "The following transformations "
+            "are not defined and will be ignored: "
             ", ".join(undefined_transforms))
 
     others = [s for s in recipe if not s[0].startswith("add-text")]
