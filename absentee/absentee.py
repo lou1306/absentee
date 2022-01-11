@@ -17,8 +17,7 @@ def from_string(string, conf):
         return "".join(execute(parse_config(f.read()), ast))
 
 
-def absentee(file, conf, show_ast, to_stdout=True):
-
+def absentee(file, conf, show_ast):
     if not conf and (not show_ast):
         raise ConfigError("No configuration file!")
 
@@ -31,12 +30,10 @@ def absentee(file, conf, show_ast, to_stdout=True):
         exit(0)
 
     with open(conf) as f:
-        if to_stdout:
-            for r in execute(parse_config(f.read()), ast):
-                click.echo(r, nl=False)
-            click.echo()
-        else:
-            yield from execute(parse_config(f.read()), ast)
+        for r in execute(parse_config(f.read()), ast):
+            click.echo(r, nl=False)
+        click.echo()
+        
 
 
 _show_ast = {
