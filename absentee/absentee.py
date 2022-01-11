@@ -7,9 +7,17 @@ import click
 
 from .error import BaseError, ParseError, ConfigError
 from .parser import parse_config, execute
-from .__about__ import *
+from .__about__ import __title__, __version__
 
-def absentee(file, conf, show_ast):
+
+def from_string(string, conf):
+    parser = c_parser.CParser()
+    ast = parser.parse(string)
+    with open(conf) as f:
+        return "".join(execute(parse_config(f.read()), ast))
+
+
+def absentee(file, conf, show_ast, to_stdout=True):
 
     if not conf and (not show_ast):
         raise ConfigError("No configuration file!")
@@ -23,9 +31,12 @@ def absentee(file, conf, show_ast):
         exit(0)
 
     with open(conf) as f:
-        for r in execute(parse_config(f.read()), ast):
-            click.echo(r, nl=False)
-        click.echo()
+        if to_stdout:
+            for r in execute(parse_config(f.read()), ast):
+                click.echo(r, nl=False)
+            click.echo()
+        else:
+            yield from execute(parse_config(f.read()), ast)
 
 
 _show_ast = {
