@@ -7,5 +7,5 @@ __summary__ = "A Bare-bones C iNstrumentation and Transformation tool"
 __uri__ = "https://github.com/lou1306/absentee"
 
 
-__version__ = "1.0"
-__date__ = "May 2020"
+__version__ = "1.1"
+__date__ = "January 2022"
