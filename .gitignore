@@ -112,3 +112,4 @@ dmypy.json
 examples/*.c
 tests/__pycache__
 .vscode
+icon.png
