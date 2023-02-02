@@ -10,11 +10,17 @@ from .parser import parse_config, execute
 from .__about__ import __title__, __version__
 
 
-def from_string(string, conf):
+def from_string(string, conf_filename):
     parser = c_parser.CParser()
     ast = parser.parse(string)
-    with open(conf) as f:
+    with open(conf_filename) as f:
         return "".join(execute(parse_config(f.read()), ast))
+
+
+def parse_and_execute(string, conf):
+    parser = c_parser.CParser()
+    ast = parser.parse(string)
+    return "".join(execute(parse_config(conf), ast))
 
 
 def absentee(file, conf, show_ast):
