@@ -24,7 +24,7 @@ def to_string(node):
 def make_decl(name, type_, init=None):
     return Decl(
         name=name, type=type_,
-        quals=[], storage=[], funcspec=[], init=init, bitsize=None)
+        quals=[], align=[], storage=[], funcspec=[], init=init, bitsize=None)
 
 
 def make_typedecl(type_, name):
