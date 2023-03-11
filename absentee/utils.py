@@ -28,7 +28,9 @@ def make_decl(name, type_, init=None):
 
 
 def make_typedecl(type_, name):
-    return TypeDecl(name, [], [], TypeDecl(name, [], IdentifierType([type_])))
+    return TypeDecl(
+        name, [], [], 
+        TypeDecl(name, [], [], IdentifierType([type_])))
 
 
 def make_function(type_, name, params, body):
