@@ -37,7 +37,7 @@ def make_function(type_, name, params, body):
     param_list = ParamList([
         make_decl(param_name, make_typedecl(param_type, param_name))
         for param_type, param_name in params])
-    fdecl = FuncDecl(param_list, TypeDecl(name, [], type_))
+    fdecl = FuncDecl(param_list, TypeDecl(name, [], [], type_))
     decl = make_decl(name, fdecl)
     return FuncDef(decl, [], body)
 

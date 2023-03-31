@@ -151,13 +151,16 @@ class ReplaceCalls(Transformation):
     """
 
     def visit_FuncCall(self, node):
-        if node.name.name in self.params:
-            new_name = self.params.get(node.name.name, node.name.name)
-            if new_name == tuple():
-                if type(self.parent) == Compound:
-                    self.replace(node, EmptyStatement())
-            else:
-                node.name.name = new_name
+        try:
+            if node.name.name in self.params:
+                new_name = self.params.get(node.name.name, node.name.name)
+                if new_name == tuple():
+                    if type(self.parent) == Compound:
+                        self.replace(node, EmptyStatement())
+                else:
+                    node.name.name = new_name
+        except AttributeError:
+            pass
 
 
 class ReplaceTypes(Transformation):
@@ -264,7 +267,6 @@ class FoldConstants(Transformation):
                     val = _ops[node.op](
                         parse_int(node.left.value),
                         parse_int(node.right.value))
-                    # print(">>>",val)
                     if abs(val) <= ULLONG_MAX:
                         new_node = Constant("int", str(val))
                         self.replace(node, new_node)
